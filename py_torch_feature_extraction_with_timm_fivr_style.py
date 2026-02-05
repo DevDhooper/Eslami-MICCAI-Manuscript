@@ -1,20 +1,8 @@
 """
-PyTorch reimplementation of intermediate CNN feature extraction inspired by:
-https://github.com/MKLab-ITI/intermediate-cnn-features
-
 Architectures:
-- ResNet / Inception / VGG via timm
+- ResNet / Inception / VGG 
 - ConvNeXt via timm
-
-IMPORTANT:
-This script REQUIRES a Python environment with PyTorch and timm installed.
-If torch is not available, the script will fail fast with a clear error
-instead of crashing during import.
-
-Expected usage environment:
-- Local machine / server / conda env / venv / cluster node
-- NOT a restricted sandbox without PyTorch
-
+If needed install packages using command below
 pip install torch torchvision timm pillow numpy tqdm
 """
 
@@ -24,7 +12,7 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 
-# ------------------ DEPENDENCY CHECK ------------------
+#CHECK
 try:
     import torch
     import timm
@@ -39,7 +27,7 @@ except ModuleNotFoundError as e:
         "Original error: " + str(e)
     )
 
-# ---------------------- CONFIG ----------------------
+#CONFIG
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 BATCH_SIZE = 16
 
@@ -51,12 +39,12 @@ MODELS = {
     "convnext": "convnext_base"
 }
 
-# ------------------ PREPROCESSING -------------------
+#PREPROCESSING
 def build_transform(model_name):
     cfg = timm.data.resolve_model_data_config(model_name)
     return timm.data.create_transform(**cfg)
 
-# ---------------- FEATURE EXTRACTOR ----------------
+#FEATURE EXTRACTOR
 class FeatureExtractor(torch.nn.Module):
     """
     CNN backbone with explicit GLOBAL MAX POOLING
@@ -76,7 +64,7 @@ class FeatureExtractor(torch.nn.Module):
         x = torch.amax(x, dim=(2, 3))         # GLOBAL MAX POOLING → (B, C)
         return x
 
-# ------------------ DATA LOADING --------------------
+#DATA LOADING
 def load_images(image_dir, transform):
     images = []
     names = []
@@ -87,7 +75,7 @@ def load_images(image_dir, transform):
             names.append(fname)
     return images, names
 
-# ------------------- EXTRACTION ---------------------
+#EXTRACTION
 def extract_features(image_dir, arch, out_path):
     """
     Extract FRAME-LEVEL features.
@@ -116,7 +104,7 @@ def extract_features(image_dir, arch, out_path):
     print(f"Saved {arch} frame-level features → {out_path} | shape={feats.shape}")
     return feats
 
-# ---------------- TEMPORAL AGGREGATION ----------------
+#TEMPORAL AGGREGATION
 def temporal_aggregate(frame_features, method="mean"):
     """
     TEMPORAL aggregation across frames.
@@ -149,7 +137,7 @@ def temporal_aggregate(frame_features, method="mean"):
     else:
         raise ValueError(f"Unknown temporal aggregation method: {method}")
 
-# ---------------- VIDEO-LEVEL PIPELINE ----------------
+#VIDEO-LEVEL PIPELINE
 def extract_video_features(image_dir, arch, out_path, agg="mean"):
     """
     Full pipeline:
@@ -160,26 +148,7 @@ def extract_video_features(image_dir, arch, out_path, agg="mean"):
     np.save(out_path, video_feat)
     print(f"Saved {arch} video-level features → {out_path} | shape={video_feat.shape}")
 
-# ---------------------- TESTS ------------------------
-def _test_temporal_aggregation():
-    """Lightweight unit tests (no torch required)."""
-    x = np.array([
-        [1.0, 2.0, 3.0],
-        [3.0, 2.0, 1.0]
-    ])
-
-    mean_expected = np.array([2.0, 2.0, 2.0])
-    max_expected = np.array([3.0, 2.0, 3.0])
-
-    assert np.allclose(temporal_aggregate(x, "mean"), mean_expected)
-    assert np.allclose(temporal_aggregate(x, "max"), max_expected)
-
-    v = temporal_aggregate(x, "l2mean")
-    assert np.isclose(np.linalg.norm(v), 1.0)
-
-    print("Temporal aggregation tests passed.")
-
-# ---------------------- MAIN ------------------------
+#MAIN
 if __name__ == "__main__":
     import argparse
 
